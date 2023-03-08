@@ -1,84 +1,323 @@
-# Block Vote JS Edition
+# BlockVote JS Edition
 
-Welcome to BlockVote! The application where a user can propose a prompt to vote on, then vote for one of two candidates!
+BlockVote JS Edition is a blockchain-based voting application built using JavaScript on the Near Protocol blockchain. The application allows users to securely cast their votes in an election and have them recorded on the blockchain, ensuring that the results are transparent and cannot be altered.
 
-This app is meant to demonstrate how to create a full dApp starting from `create-near-app`, and also demonstrate how to implement collections and initiate a JS smart contract using the near-sdk-js!
+<p align="center"><img src="https://i.imgur.com/spJWhBf.png"></p>
 
-This app was initialized with [create-near-app]
+## Installation
 
-# Quick Start
+To install BlockVote JS Edition, follow these steps:
 
-If you haven't installed dependencies during setup:
+1. Clone the repository to your local machine using the following command:
 
-    npm install
+```bash=
+git clone https://github.com/doriancrutcher/BlockVote-JS-Edition-Tutorial.git
+```
 
-Build and deploy your contract to TestNet with a temporary dev account:
+2. Navigate to the project directory:
 
-    npm run deploy
+```bash=
+cd BlockVote-JS-Edition-Tutorial
+```
 
-Test your contract:
+3. Install the required dependencies using the following command:
 
-    npm run start
+```bash=
+yarn install-deps
+```
 
-# Exploring The Code
+4. Start the application:
 
-1. The smart-contract code lives in the `/contract` folder. There you will find the functionality implemented to store votes, store user names per prompt and store the prompt names to vote on
+```bash=
+yarn start
+```
 
-2. The frontend code lives in the `/frontend` folder. `/frontend/index.html` is a great
-   place to start exploring. Note that it loads in `/frontend/index.js`,
-   this is your entrypoint to learn how the frontend connects to the NEAR blockchain.
+Note: If you don't have yarn installed, you can install it by running npm install -g yarn.
 
-# Deploy
+## Usage
 
-Every smart contract in NEAR has its [own associated account][near accounts].
-When you run `npm run deploy`, your smart contract gets deployed to the live NEAR TestNet with a temporary dev account.
-When you're ready to make it permanent, here's how:
+This application allows users to create a poll with two candidates, and each user can only vote in a poll once. Results are shown after the vote is cast.
 
-## Step 0: Install near-cli (optional)
+To create a poll, follow these steps:
 
-[near-cli] is a command line interface (CLI) for interacting with the NEAR blockchain. It was installed to the local `node_modules` folder when you ran `npm install`, but for best ergonomics you may want to install it globally:
+1. Enter the names and URL links for the two candidates in the input fields.
+2. Click on the "Create Poll" button to create the poll.
+3. Share the poll link with others to allow them to vote.
 
-    npm install --global near-cli
+To vote in a poll, follow these steps:
 
-Or, if you'd rather use the locally-installed version, you can prefix all `near` commands with `npx`
+1. Click on the name of the candidate you want to vote for.
+2. You will only be able to vote once in each poll.
+3. After you vote, the poll results will be displayed on the screen.
 
-Ensure that it's installed with `near --version` (or `npx near --version`)
+That's it! If you have any questions or issues while using the BlockVote JS Edition, feel free to open an issue on the project's GitHub page.
 
-## Step 1: Create an account for the contract
+## Smart Contract
 
-Each account on NEAR can have at most one contract deployed to it. If you've already created an account such as `your-name.testnet`, you can deploy your contract to `near-blank-project.your-name.testnet`. Assuming you've already created an account on [NEAR Wallet], here's how to create `near-blank-project.your-name.testnet`:
+# Smart Contract for Voting Application
 
-1. Authorize NEAR CLI, following the commands it gives you:
+The contract contains several view and call methods that allow users to interact with the contract, including:
 
-   near login
+View Methods:
 
-2. Create a subaccount (replace `YOUR-NAME` below with your actual account name):
+- `getUrl`: retrieves the URL link for a specific candidate based on the candidate's name and prompt.
+- `didParticipate`: checks whether a specific user has participated in a given prompt.
+- `participateArray`: retrieves the list of users who have participated in a given prompt.
+- `getAllPrompts`: retrieves a list of all prompts currently available in the contract.
+- `getVotes`: retrieves the vote tallies for a specific prompt.
+- `getCandidatePair`: retrieves the names of the two candidates for a specific prompt.
 
-   near create-account near-blank-project.YOUR-NAME.testnet --masterAccount YOUR-NAME.testnet
+Call Methods:
 
-## Step 2: deploy the contract
+- `addCandidatePair`: adds a candidate pair for a specific prompt
+- `initializeVotes`: initializes the vote tallies for a specific prompt
+- `addToPromptArray`: adds a prompt to the contract
+- `clearPromptArray`: clears all prompts and associated data from the contract
+- `addVote`: casts a vote for a specific candidate in a prompt
+- `recordUser`: records the participation of a user in a specific prompt
 
-Use the CLI to deploy the contract to TestNet with your account ID.
-Replace `PATH_TO_WASM_FILE` with the `wasm` that was generated in `contract` build directory.
+```javascript
+{
+  NearBindgen,
+  near,
+  call,
+  view,
+  LookupMap,
+  UnorderedSet,
+  UnorderedMap,
+} from "near-sdk-js";
 
-    near deploy --accountId near-blank-project.YOUR-NAME.testnet --wasmFile PATH_TO_WASM_FILE
+@NearBindgen({})
+class VotingContract {
+  // Candidate Pair Used to store Candidate Names and URL links
+  candidatePair = new UnorderedMap<string[]>("candidate_pair");
+  // Prompt Set Was used to in an effort to keep track of keys for the candidatePair Unordered Map
+  promptSet = new UnorderedSet<string>("promptArray");
+  voteArray = new UnorderedMap<number[]>("voteArray");
+  userParticipation = new UnorderedMap<string[]>("user Participation ");
 
-## Step 3: set contract name in your frontend code
+  // Writing View Methods
 
-Modify the line in `src/config.js` that sets the account name of the contract. Set it to the account id you used above.
+// retrieves the URL link for a specific candidate based on the candidate's name and prompt.
+  @view({})
+  getUrl({ prompt, name }: { prompt: string; name: string }): string {
+    near.log(prompt);
+    let candidateUrlArray = this.candidatePair.get(prompt);
+    return candidateUrlArray[candidateUrlArray.indexOf(name) + 1];
+  }
 
-    const CONTRACT_NAME = process.env.CONTRACT_NAME || 'near-blank-project.YOUR-NAME.testnet'
+// checks whether a specific user has participated in a given prompt.
+  @view({})
+  didParticipate({ prompt, user }: { prompt: string; user: string }): boolean {
+    let promptUserList: string[] = this.userParticipation.get(prompt, {
+      defaultValue: [],
+    });
+    near.log(promptUserList);
+    return promptUserList.includes(user);
+  }
 
-# Troubleshooting
+//retrieves the list of users who have participated in a given prompt.
+  @view({})
+  participateArray({ prompt }: { prompt: string }): string[] {
+    return this.userParticipation.get(prompt);
+  }
 
-On Windows, if you're seeing an error containing `EPERM` it may be related to spaces in your path. Please see [this issue](https://github.com/zkat/npx/issues/209) for more details.
+//retrieves a list of all prompts currently available in the contract.
 
-[create-near-app]: https://github.com/near/create-near-app
-[node.js]: https://nodejs.org/en/download/package-manager/
-[jest]: https://jestjs.io/
-[near accounts]: https://docs.near.org/concepts/basics/account
-[near wallet]: https://wallet.testnet.near.org/
-[near-cli]: https://github.com/near/near-cli
-[gh-pages]: https://github.com/tschaub/gh-pages
+  @view({})
+  getAllPrompts(): string[] {
+    return this.promptSet.toArray();
+  }
 
-# BlockVote-JS-Edition-Tutorial
+//retrieves the vote tallies for a specific prompt.
+  @view({})
+  getVotes({ prompt }: { prompt: string }): number[] {
+    return this.voteArray.get(prompt, { defaultValue: [] });
+  }
+
+//retrieves the names of the two candidates for a specific prompt.
+  @view({})
+  getCandidatePair({ prompt }: { prompt: string }): string[] {
+    let candidateUrlArray = this.candidatePair.get(prompt, {
+      defaultValue: ["n/a,n/a"],
+    });
+    return [candidateUrlArray[0], candidateUrlArray[2]];
+  }
+
+
+// Call Methods
+
+// Adds a candidate pair with their Urls for a specific prompt to the contract's unordered map of candidate pairs.
+  @call({})
+  addCandidatePair({
+    prompt,
+    name1,
+    name2,
+    url1,
+    url2,
+  }: {
+    prompt: string;
+    name1: string;
+    name2: string;
+    url1: string;
+    url2: string;
+  }) {
+    this.candidatePair.set(prompt, [name1, url1, name2, url2]);
+  }
+
+// initializes the vote tallies for a specific prompt
+  @call({})
+  initializeVotes({ prompt }: { prompt: string }) {
+    this.voteArray.set(prompt, [0, 0]);
+  }
+
+// Adds a prompt to the contract's unordered set of prompts.
+  @call({})
+  addToPromptArray({ prompt }: { prompt: string }) {
+    this.promptSet.set(prompt);
+  }
+
+//clears all prompts and associated data (candidate pairs, vote tallies, and user participation)
+  @call({})
+  clearPromptArray() {
+    this.promptSet.clear();
+    this.candidatePair.clear();
+    this.userParticipation.clear();
+    this.voteArray.clear();
+    near.log("clearing polls");
+  }
+
+
+// casts a vote for a specific candidate in a prompt by updating the vote tally for that candidate in the contract's unordered map of vote tallies. The method takes in the prompt and the index of the candidate being voted for.
+  @call({})
+  addVote({ prompt, index }: { prompt: string; index: number }) {
+    let currentVotes = this.voteArray.get(prompt, { defaultValue: [0, 0] });
+    currentVotes[index] = currentVotes[index] + 1;
+    this.voteArray.set(prompt, currentVotes);
+  }
+
+
+records the participation of a user in a specific prompt by adding the user's account ID to an array in the contract's unordered map of user participation.
+  @call({})
+  recordUser({ prompt, user }: { prompt: string; user: string }) {
+    let currentArray = this.userParticipation.get(prompt, { defaultValue: [] });
+    currentArray.includes(user) ? null : currentArray.push(user);
+    this.userParticipation.set(prompt, currentArray);
+  }
+}
+
+```
+
+# Testing
+
+When writing smart contracts, it is very important to test all methods exhaustively. In this project, you have two types of tests: unit tests and integration tests. Before digging into them, it's important to run the tests present in the dApp through the command `yarn test`.
+
+## Unit Tests
+
+Unit tests are designed to test individual functions and methods in the smart contract. These tests are run in isolation, meaning that they do not interact with other components of the system. The purpose of unit tests is to ensure that each individual function or method behaves as expected.
+
+In this project, you can run the unit tests by executing the command `yarn test:unit`.
+
+## Integration Tests
+
+These tests are run to ensure that the different components of the system work together as expected. In the context of a smart contract, integration tests are used to test the interactions between the contract and the blockchain.
+
+In this project, you can run the integration tests by executing the command `yarn test`.
+
+These tests use a combination of `ava` and `near-workspaces`
+
+```javascript
+// imports
+// worker - lets me make a sandbox instance for deployment and testing operations
+// nearAccount - lets me create and manage test accounts
+
+// anyTest and TestFn let me define  and run test in ava
+import { Worker, NearAccount } from "near-workspaces";
+import anyTest, { TestFn } from "ava";
+
+const test = anyTest as TestFn<{
+  worker: Worker;
+  accounts: Record<string, NearAccount>;
+}>;
+
+let promptVal: string;
+let can1: string;
+let can2: string;
+let url1: string;
+let url2: string;
+
+// things to be done before the test begin
+test.beforeEach(async (t) => {
+  // Init the worker and start a Sandbox server
+  const worker = await Worker.init();
+
+  //Set Variable Values
+  promptVal = "testPoll";
+  can1 = "Pencil";
+  can2 = "Pen";
+  url1 = "url1";
+  url2 = "url2";
+
+  // Deploy contract
+  const root = worker.rootAccount;
+  const contract = await root.createSubAccount("test-account");
+  // Get wasm file path from package.json test script in folder above
+  await contract.deploy(process.argv[2]);
+
+  // Save state for test runs, it is unique for each test
+  t.context.worker = worker;
+  t.context.accounts = { root, contract };
+});
+
+test.afterEach.always(async (t) => {
+  // Stop Sandbox server
+  await t.context.worker.tearDown().catch((error) => {
+    console.log("Failed to stop the Sandbox:", error);
+  });
+});
+
+test("initializes new vote array for a given prompt", async (t) => {
+  const { root, contract } = t.context.accounts;
+  await root.call(contract, "initializeVotes", { prompt: promptVal });
+  const poll = await contract.view("getVotes", { prompt: promptVal });
+  t.deepEqual(poll, [0, 0], "Vote array not initialized properly");
+});
+
+test("add candidate pair for the given prompt ", async (t) => {
+  const { root, contract } = t.context.accounts;
+  await root.call(contract, "addCandidatePair", {
+    prompt: promptVal,
+    name1: can1,
+    name2: can2,
+    url1: url1,
+    url2: url2,
+  });
+  const candidatePairVal = await contract.view("getCandidatePair", {
+    prompt: promptVal,
+  });
+  t.deepEqual(
+    candidatePairVal,
+    [can1, can2],
+    "Incorrect Candidate Pair retreived"
+  );
+});
+
+test("add a vote to the given prompt and check user participation", async (t) => {
+  const { root, contract } = t.context.accounts;
+
+  // Add vote
+  await root.call(contract, "addVote", { prompt: promptVal, index: 0 });
+  const votes = await contract.view("getVotes", { prompt: promptVal });
+  t.deepEqual(votes, [1, 0], "Vote not added properly");
+
+  // Check user participation
+  const user = "user1";
+  await root.call(contract, "recordUser", { prompt: promptVal, user });
+  const participated = await contract.view("didParticipate", {
+    prompt: promptVal,
+    user,
+  });
+  t.true(participated, "User participation not recorded properly");
+});
+
+```
